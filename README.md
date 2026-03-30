@@ -41,3 +41,9 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+### Smarter Scheduling
+- Sorting tasks by priority first and time second so that essential pet‑care activities always appear before optional ones, and tasks with specific times are placed in the correct order.
+- Checking the owner’s available minutes and selecting tasks that fit within that limit, ensuring the schedule stays realistic and doable.
+- Detecting time conflicts by looking for tasks assigned to the same time slot and returning a warning instead of stopping the program, which keeps the system flexible and user‑friendly.
+This approach keeps the logic easy to understand while still supporting features like multiple pets, recurring tasks, and lightweight conflict detection.

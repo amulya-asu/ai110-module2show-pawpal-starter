@@ -1,7 +1,15 @@
 import streamlit as st
-
+from pawpal_system import Owner, Pet, Task, Scheduler
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
+# Initialize session state objects
+if "owner" not in st.session_state:
+    st.session_state.owner = None
 
+if "pets" not in st.session_state:
+    st.session_state.pets = []
+
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
 st.title("🐾 PawPal+")
 
 st.markdown(
@@ -40,9 +48,23 @@ st.divider()
 
 st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
+# Create owner only once
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner(owner_name, time_available)
+
+owner = st.session_state.owner
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
+if st.button("Create Owner & Pet"):
+    owner = Owner(owner_name, time_available=120)  # or add a UI field for time
+    pet = Pet(pet_name, species)
 
+    owner.add_pet(pet)
+
+    st.session_state.owner = owner
+    st.session_state.pets.append(pet)
+
+    st.success("Owner and pet created!")
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
 
@@ -58,31 +80,57 @@ with col3:
     priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
 if st.button("Add task"):
-    st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority}
-    )
+    if st.session_state.pets:
+        pet_obj = st.session_state.pets[0]  # simple version: first pet
+    else:
+        pet_obj = None
+
+    new_task = Task(task_title, duration, priority, pet=pet_obj)
+    st.session_state.tasks.append(new_task)
+
+    st.success("Task added!")
 
 if st.session_state.tasks:
     st.write("Current tasks:")
-    st.table(st.session_state.tasks)
+    task_rows = []
+    for t in st.session_state.tasks:
+        task_rows.append({
+            "Task": t.name,
+            "Duration (min)": t.duration,
+            "Priority": t.priority,
+            "Pet": t.pet.name if t.pet else "—",
+            "Completed": t.completed
+            })
+
+    st.table(task_rows)
 else:
     st.info("No tasks yet. Add one above.")
 
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("This button should call your scheduling logic once you implement it.")
-
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+
+    # 1. Ensure owner exists
+    if st.session_state.owner is None:
+        st.error("Please create an owner and pet first.")
+    else:
+        owner = st.session_state.owner
+
+        # 2. Use the Task objects directly
+        real_tasks = st.session_state.tasks
+
+        # 3. Run the scheduler
+        scheduler = Scheduler()
+        plan = scheduler.generate_plan(owner, real_tasks)
+
+        # 4. Display results
+        st.subheader("Today's Schedule")
+
+        if not plan:
+            st.warning("No tasks fit into the available time.")
+        else:
+            for task in plan:
+                st.write("• " + task.describe())
+
+            st.info(scheduler.explain_plan(plan))
