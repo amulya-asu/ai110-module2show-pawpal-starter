@@ -56,3 +56,5 @@ Run the full test suite:
 
 ```bash
 python -m pytest
+### Working Demo Picture
+<a href="images/demo.png" target="_blank" style="display:block; text-align:center;"><imgsrc="images/demo.png"title="PawPal App"alt="PawPal App"width="600"/></a>
