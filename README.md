@@ -47,3 +47,25 @@ pip install -r requirements.txt
 - Checking the owner’s available minutes and selecting tasks that fit within that limit, ensuring the schedule stays realistic and doable.
 - Detecting time conflicts by looking for tasks assigned to the same time slot and returning a warning instead of stopping the program, which keeps the system flexible and user‑friendly.
 This approach keeps the logic easy to understand while still supporting features like multiple pets, recurring tasks, and lightweight conflict detection.
+
+## Testing PawPal+
+
+Run the test suite with:
+
+```bash
+python -m pytest
+```
+
+The tests cover the core backend behaviors for PawPal+, including:
+
+- Adding pets and tasks to an owner
+- Marking tasks complete
+- Sorting tasks into the expected schedule order
+- Recurring task generation
+- Conflict detection for tasks scheduled at the same time
+
+### Confidence Level
+
+**★★★☆☆ (3/5)**
+
+This score reflects that the core logic was checked successfully with manual verification and syntax compilation, but the full `pytest` run could not be executed in this environment because `pytest` was not installed locally.

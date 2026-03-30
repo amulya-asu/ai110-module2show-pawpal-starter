@@ -48,6 +48,7 @@ st.divider()
 
 st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
+time_available = st.number_input("Available time (minutes)", min_value=0, max_value=1440, value=120)
 # Create owner only once
 if "owner" not in st.session_state:
     st.session_state.owner = Owner(owner_name, time_available)
@@ -56,7 +57,7 @@ owner = st.session_state.owner
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
 if st.button("Create Owner & Pet"):
-    owner = Owner(owner_name, time_available=120)  # or add a UI field for time
+    owner = Owner(owner_name, time_available)
     pet = Pet(pet_name, species)
 
     owner.add_pet(pet)
@@ -85,7 +86,8 @@ if st.button("Add task"):
     else:
         pet_obj = None
 
-    new_task = Task(task_title, duration, priority, pet=pet_obj)
+    priority_map = {"low": 1, "medium": 2, "high": 3}
+    new_task = Task(task_title, duration, priority_map[priority], pet=pet_obj)
     st.session_state.tasks.append(new_task)
 
     st.success("Task added!")
@@ -122,7 +124,7 @@ if st.button("Generate schedule"):
 
         # 3. Run the scheduler
         scheduler = Scheduler()
-        plan = scheduler.generate_plan(owner, real_tasks)
+        plan, warnings = scheduler.generate_plan(owner, real_tasks)
 
         # 4. Display results
         st.subheader("Today's Schedule")
@@ -134,3 +136,6 @@ if st.button("Generate schedule"):
                 st.write("• " + task.describe())
 
             st.info(scheduler.explain_plan(plan))
+
+        if warnings:
+            st.warning("\n".join(warnings))

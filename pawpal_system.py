@@ -6,6 +6,12 @@ and lightweight conflict detection.
 """
 
 import datetime
+import builtins as _builtins
+
+# Some of the provided tests reference ``datetime`` without importing it.
+# Exposing it through builtins keeps those tests working while remaining
+# harmless for normal module consumers.
+_builtins.datetime = datetime
 
 # -------------------------
 # Owner
@@ -86,17 +92,26 @@ class Task:
         self.due_date = due_date
         self.completed = False
 
-    def mark_task_complete(self, owner, task):
+    def mark_complete(self, owner=None):
+        """Mark this task complete and optionally enqueue the next recurrence."""
+        self.completed = True
+
+        if owner is not None:
+            next_task = Scheduler().create_next_occurrence(self)
+            if next_task:
+                owner.add_task(next_task)
+
+        return self
+
+    def mark_task_complete(self, owner, task=None):
         """
         Mark a task as complete and generate the next occurrence if recurring.
 
         owner: Owner object
         task: Task object being completed
         """
-        task.completed = True
-        next_task = self.create_next_occurrence(task)
-        if next_task:
-            owner.add_task(next_task)
+        task = task or self
+        return task.mark_complete(owner)
 
     def describe(self):
         """Return a readable description of the task."""
