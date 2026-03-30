@@ -1,7 +1,11 @@
 import streamlit as st
-from pawpal_system import Owner, Pet, Task, Scheduler
+
+from pawpal_system import Owner, Pet, Scheduler, Task
+
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
-# Initialize session state objects
+
+
 if "owner" not in st.session_state:
     st.session_state.owner = None
 
@@ -10,6 +14,8 @@ if "pets" not in st.session_state:
 
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
+
+
 st.title("🐾 PawPal+")
 
 st.markdown(
@@ -49,28 +55,41 @@ st.divider()
 st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
 time_available = st.number_input("Available time (minutes)", min_value=0, max_value=1440, value=120)
-# Create owner only once
-if "owner" not in st.session_state:
+
+if st.button("Save Owner"):
     st.session_state.owner = Owner(owner_name, time_available)
+    st.success("Owner saved!")
 
 owner = st.session_state.owner
+
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
-if st.button("Create Owner & Pet"):
-    owner = Owner(owner_name, time_available)
-    pet = Pet(pet_name, species)
 
-    owner.add_pet(pet)
+if st.button("Add Pet"):
+    if owner is None:
+        st.error("Please save the owner first.")
+    else:
+        pet = Pet(pet_name, species)
+        owner.add_pet(pet)
+        st.session_state.pets.append(pet)
+        st.success(f"{pet.name} added to {owner.name}.")
 
-    st.session_state.owner = owner
-    st.session_state.pets.append(pet)
+if st.session_state.pets:
+    st.write("Current pets:")
+    st.table(
+        [
+            {
+                "Pet": pet.name,
+                "Species": pet.species,
+            }
+            for pet in st.session_state.pets
+        ]
+    )
+else:
+    st.info("No pets yet. Add one above.")
 
-    st.success("Owner and pet created!")
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
-
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -80,29 +99,45 @@ with col2:
 with col3:
     priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
+task_time = st.text_input("Task time (optional, HH:MM)", value="", placeholder="07:30")
+
+if st.session_state.pets:
+    selected_pet = st.selectbox(
+        "Assign to pet",
+        options=st.session_state.pets,
+        format_func=lambda pet: f"{pet.name} ({pet.species})",
+    )
+else:
+    selected_pet = None
+    st.caption("Add a pet first to assign tasks to a specific pet.")
+
 if st.button("Add task"):
-    if st.session_state.pets:
-        pet_obj = st.session_state.pets[0]  # simple version: first pet
-    else:
-        pet_obj = None
-
     priority_map = {"low": 1, "medium": 2, "high": 3}
-    new_task = Task(task_title, duration, priority_map[priority], pet=pet_obj)
+    cleaned_time = task_time.strip() or None
+    new_task = Task(
+        task_title,
+        duration,
+        priority_map[priority],
+        pet=selected_pet,
+        task_time=cleaned_time,
+    )
     st.session_state.tasks.append(new_task)
-
     st.success("Task added!")
 
 if st.session_state.tasks:
     st.write("Current tasks:")
     task_rows = []
     for t in st.session_state.tasks:
-        task_rows.append({
-            "Task": t.name,
-            "Duration (min)": t.duration,
-            "Priority": t.priority,
-            "Pet": t.pet.name if t.pet else "—",
-            "Completed": t.completed
-            })
+        task_rows.append(
+            {
+                "Task": t.name,
+                "Duration (min)": t.duration,
+                "Priority": t.priority,
+                "Time": t.time or "Unscheduled",
+                "Pet": t.pet.name if t.pet else "None",
+                "Completed": t.completed,
+            }
+        )
 
     st.table(task_rows)
 else:
@@ -112,30 +147,56 @@ st.divider()
 
 st.subheader("Build Schedule")
 if st.button("Generate schedule"):
-
-    # 1. Ensure owner exists
     if st.session_state.owner is None:
-        st.error("Please create an owner and pet first.")
+        st.error("Please create an owner first.")
     else:
         owner = st.session_state.owner
-
-        # 2. Use the Task objects directly
         real_tasks = st.session_state.tasks
 
-        # 3. Run the scheduler
         scheduler = Scheduler()
         plan, warnings = scheduler.generate_plan(owner, real_tasks)
 
-        # 4. Display results
         st.subheader("Today's Schedule")
+
+        if warnings:
+            st.error(
+                "Conflict detected. This schedule is not possible as-is until the overlapping tasks are adjusted."
+            )
+            for warning in warnings:
+                st.write(warning)
 
         if not plan:
             st.warning("No tasks fit into the available time.")
         else:
+            plan_rows = []
             for task in plan:
-                st.write("• " + task.describe())
+                plan_rows.append(
+                    {
+                        "Task": task.name,
+                        "Time": task.time or "Unscheduled",
+                        "Duration (min)": task.duration,
+                        "Priority": task.priority,
+                        "Pet": task.pet.name if task.pet else "None",
+                    }
+                )
+
+            st.success(f"{len(plan_rows)} task(s) scheduled successfully.")
+            st.table(plan_rows)
+
+            unscheduled_tasks = [task for task in real_tasks if task not in plan]
+            if unscheduled_tasks:
+                st.caption("Tasks that did not fit into the available time:")
+                st.table(
+                    [
+                        {
+                            "Task": task.name,
+                            "Time": task.time or "Unscheduled",
+                            "Duration (min)": task.duration,
+                            "Priority": task.priority,
+                            "Pet": task.pet.name if task.pet else "None",
+                        }
+                        for task in unscheduled_tasks
+                    ]
+                )
 
             st.info(scheduler.explain_plan(plan))
-
-        if warnings:
-            st.warning("\n".join(warnings))
